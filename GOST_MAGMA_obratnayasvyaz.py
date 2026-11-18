@@ -1,3 +1,5 @@
+# ГОСТ 28147-89 - РЕЖИМ ГАММИРОВАНИЯ С ОБРАТНОЙ СВЯЗЬЮ
+sinxron = '123456789ABCDEF0'
 m = input('Введите текст для шифрования: ')
 key = '0102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F20'
 SBOX = [
@@ -10,9 +12,8 @@ SBOX = [
     [13, 11, 4, 1, 3, 15, 5, 9, 0, 10, 14, 7, 6, 8, 2, 12],
     [1, 15, 13, 0, 5, 7, 10, 4, 9, 2, 3, 14, 6, 11, 8, 12],
 ]
-sinxron = '123456789ABCDEF0'
-C1 = int("00000010000000000000000000000000", 2)
-C2 = int('00000010000100000000000000000000', 2)
+
+
 def sbox(n):
     n_hex = hex(n)[2:].zfill(8)
     m = [int(i, 16) for i in n_hex][::-1]
@@ -21,21 +22,18 @@ def sbox(n):
         result = hex(SBOX[j][m[j]])[2:] + result
     return result
 
-f = ''
 
 def prost_rezh(c):
-    m_bytes = bytes.hex(c.encode())
-    while len(m_bytes) % 8 != 0:
+    m_bytes = c
+    while len(m_bytes) % 16 != 0:
         m_bytes += '0'
     k = []
     for i in range(0, len(key), len(key)//8):
         k.append(key[i:i+8])
 
-    # ДОБАВЛЕНО: переводим весь блок в числа заранее
     blocks = []
     for i in range(0, len(m_bytes), 16):
         blocks.append([int(m_bytes[i:i+8], 16), int(m_bytes[i+8:i+16], 16)])
-
 
     for l in range(0, 24):
         for b in range(len(blocks)):
@@ -57,15 +55,21 @@ def prost_rezh(c):
             s_box = int(sbox(n), 16)
             result = ((s_box << 11) | (s_box >> (32 - 11))) & 0xFFFFFFFF
             result = result ^ N2
-            N1, N2 = result, temp
+            if l == 7:
+                N2 = result
+            else:
+                N1, N2 = result, temp
             blocks[b] = [N1, N2]
     return blocks
+
+
 ct = prost_rezh(sinxron)
 
 
 def obr_svyaz(ct):
     cipher_text = ''
     m_byte = bytes.hex(m.encode())
+    dlina = len(m_byte)
     while len(m_byte) % 16 != 0:
         m_byte += '0'
     blocks = int((hex(ct[0][0])[2:].zfill(8) + hex(ct[0][1])[2:].zfill(8)), 16)
@@ -75,5 +79,7 @@ def obr_svyaz(ct):
         cipher_text += hex(ct_block)[2:].zfill(16)
         result = prost_rezh(hex(ct_block)[2:].zfill(16))
         blocks = int(hex(result[0][0])[2:].zfill(8) + hex(result[0][1])[2:].zfill(8), 16)
-    return cipher_text
+    return cipher_text[:dlina]    
+
+
 print(obr_svyaz(ct))
