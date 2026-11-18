@@ -1,5 +1,4 @@
-МАГМА В РЕЖИМЕ ГАММИРОВАНИЯ
-from pwn import xor  # ДОБАВЛЕНО: оставил, но по факту xor тут не нужен
+#МАГМА В РЕЖИМЕ ГАММИРОВАНИЯ
 m = input('Введите текст для шифрования: ')
 key = '0102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F20'
 SBOX = [
@@ -12,9 +11,11 @@ SBOX = [
     [13, 11, 4, 1, 3, 15, 5, 9, 0, 10, 14, 7, 6, 8, 2, 12],
     [1, 15, 13, 0, 5, 7, 10, 4, 9, 2, 3, 14, 6, 11, 8, 12],
 ]
-sinxron = '123456789ABCDEF0'
-C1 = int("00000010000000000000000000000000", 2)
-C2 = int('00000010000100000000000000000000', 2)
+sinxron = '12345678'
+C1 = 0x01010104
+C2 = 0x01010101
+
+
 def sbox(n):
     n_hex = hex(n)[2:].zfill(8)
     m = [int(i, 16) for i in n_hex][::-1]
@@ -23,21 +24,18 @@ def sbox(n):
         result = hex(SBOX[j][m[j]])[2:] + result
     return result
 
-f = ''
 
 def prost_rezh(c):
-    m_bytes = bytes.hex(c.encode())
-    while len(m_bytes) % 8 != 0:
+    m_bytes = c
+    while len(m_bytes) % 16 != 0:
         m_bytes += '0'
     k = []
     for i in range(0, len(key), len(key)//8):
         k.append(key[i:i+8])
 
-    # ДОБАВЛЕНО: переводим весь блок в числа заранее
     blocks = []
     for i in range(0, len(m_bytes), 16):
         blocks.append([int(m_bytes[i:i+8], 16), int(m_bytes[i+8:i+16], 16)])
-
 
     for l in range(0, 24):
         for b in range(len(blocks)):
@@ -59,43 +57,43 @@ def prost_rezh(c):
             s_box = int(sbox(n), 16)
             result = ((s_box << 11) | (s_box >> (32 - 11))) & 0xFFFFFFFF
             result = result ^ N2
-            N1, N2 = result, temp
+            if l == 7:
+                N2 = result
+            else:
+                N1, N2 = result, temp
             blocks[b] = [N1, N2]
     return blocks
-ct = prost_rezh(sinxron)
-def gamma_block(ct):
-    # ct — результат шифрования синхропосылки (список блоков)
-    # Применяем константы ОДИН РАЗ к результату шифрования синхропосылки
-    N2_g = (ct[0][1] + C1) % (2 ** 32 - 1)
-    N1_g = (ct[0][0] + C2) % (2 ** 32)
-    gamma_do = [[N1_g, N2_g]]
 
-    # Выравниваем сообщение
+
+ct = prost_rezh(bytes.hex(sinxron.encode()))
+print(ct)
+
+
+def gamma_block(ct):
+    N1_g, N2_g = ct[0]
+
     m_byte = bytes.hex(m.encode())
+    dlina = len(m_byte)
     while len(m_byte) % 16 != 0:
         m_byte += '0'
 
-    # Разбиваем сообщение на блоки
     blocks = []
     for i in range(0, len(m_byte), 16):
         blocks.append([int(m_byte[i:i+8], 16), int(m_byte[i+8:i+16], 16)])
 
-    while len(gamma_do) < len(blocks):
-        last = gamma_do[-1]
-        # Собираем последний гамма-блок в hex-строку для шифрования
-        last_hex = hex(last[0])[2:].zfill(8) + hex(last[1])[2:].zfill(8)
-        # Шифруем в простом режиме
-        encrypted = prost_rezh(last_hex)
-        # Получаем новый гамма-блок
-        gamma_do.append([encrypted[0][0], encrypted[0][1]])
-
-    # XOR-им сообщение с гаммой
     cipher_text = ''
     for i in range(len(blocks)):
-        n1 = blocks[i][0] ^ gamma_do[i][0]
-        n2 = blocks[i][1] ^ gamma_do[i][1]
+        N1_g = (N1_g + C2) % (2 ** 32)
+        N2_g = (N2_g + C1) % (2**32 - 1)
+
+        state_hex = hex(N1_g)[2:].zfill(8) + hex(N2_g)[2:].zfill(8)
+        gamma = prost_rezh(state_hex)[0]
+
+        n1 = blocks[i][0] ^ gamma[0]
+        n2 = blocks[i][1] ^ gamma[1]
         cipher_text += hex(n1)[2:].zfill(8) + hex(n2)[2:].zfill(8)
 
-    return cipher_text
-print(gamma_block(ct))
+    return cipher_text[:dlina]       # убираем дополнение нулями
 
+
+print(gamma_block(ct))
