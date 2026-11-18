@@ -1,4 +1,4 @@
-ГОСТ МАГМА - РЕЖИМ ПРОСТОЙ ОБРАБОТКИ
+#ГОСТ МАГМА - РЕЖИМ ПРОСТОЙ ОБРАБОТКИ
 m = input('Введите текст для шифрования: ')
 key = '0102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F20'
 SBOX = [
@@ -12,6 +12,7 @@ SBOX = [
     [1, 15, 13, 0, 5, 7, 10, 4, 9, 2, 3, 14, 6, 11, 8, 12],
 ]
 
+
 def sbox(n):
     n_hex = hex(n)[2:].zfill(8)
     m = [int(i, 16) for i in n_hex][::-1]
@@ -20,11 +21,10 @@ def sbox(n):
         result = hex(SBOX[j][m[j]])[2:] + result
     return result
 
-f = ''
 
 def prost_rezh(c):
-    m_bytes = bytes.hex(c.encode())
-    while len(m_bytes) % 8 != 0:
+    m_bytes = c
+    while len(m_bytes) % 16 != 0:
         m_bytes += '0'
     k = []
     for i in range(0, len(key), len(key)//8):
@@ -33,7 +33,6 @@ def prost_rezh(c):
     blocks = []
     for i in range(0, len(m_bytes), 16):
         blocks.append([int(m_bytes[i:i+8], 16), int(m_bytes[i+8:i+16], 16)])
-
 
     for l in range(0, 24):
         for b in range(len(blocks)):
@@ -55,12 +54,16 @@ def prost_rezh(c):
             s_box = int(sbox(n), 16)
             result = ((s_box << 11) | (s_box >> (32 - 11))) & 0xFFFFFFFF
             result = result ^ N2
-            N1, N2 = result, temp
+            if l == 7:
+                N2 = result
+            else:
+                N1, N2 = result, temp
             blocks[b] = [N1, N2]
+    return blocks
 
-    out = ''
-    for b in blocks:
-        out += hex(b[0])[2:].zfill(8) + hex(b[1])[2:].zfill(8)
-    return out
 
-print(prost_rezh(m))
+ct = prost_rezh(bytes.hex(m.encode()))
+out = ''
+for b in ct:
+    out += hex(b[0])[2:].zfill(8) + hex(b[1])[2:].zfill(8)
+print(out)
