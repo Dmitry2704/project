@@ -10,6 +10,8 @@ SBOX = [
     [13, 11, 4, 1, 3, 15, 5, 9, 0, 10, 14, 7, 6, 8, 2, 12],
     [1, 15, 13, 0, 5, 7, 10, 4, 9, 2, 3, 14, 6, 11, 8, 12],
 ]
+
+
 def sbox(n):
     n_hex = hex(n)[2:].zfill(8)
     m = [int(i, 16) for i in n_hex][::-1]
@@ -18,34 +20,41 @@ def sbox(n):
         result = hex(SBOX[j][m[j]])[2:] + result
     return result
 
+
 def prost_rezh(c):
-    m_bytes = bytes.hex(c.encode())
-    while len(m_bytes) % 8 != 0:
+    m_bytes = c                          
+    while len(m_bytes) % 16 != 0:        
         m_bytes += '0'
     k = []
     for i in range(0, len(key), len(key)//8):
         k.append(key[i:i+8])
 
-    # ДОБАВЛЕНО: переводим весь блок в числа заранее
     blocks = []
     for i in range(0, len(m_bytes), 16):
         blocks.append([int(m_bytes[i:i+8], 16), int(m_bytes[i+8:i+16], 16)])
-        break
 
-    for l in range(0, 16):
+    for l in range(16):
         for b in range(len(blocks)):
             N1, N2 = blocks[b]
             temp = N1
-            n = (int(k[l % len(k)], 16) + N1) % (2**32)
+            n = (int(k[l % len(k)], 16) + N1) % (2 ** 32)
             s_box = int(sbox(n), 16)
             result = ((s_box << 11) | (s_box >> (32 - 11))) & 0xFFFFFFFF
             result = result ^ N2
-            N1, N2 = result, temp
+            if l == 15:
+                N2 = result
+            else:
+                N1, N2 = result, temp
             blocks[b] = [N1, N2]
     return blocks
-ct = prost_rezh(m)
+
+
+m_hex = bytes.hex(m.encode())
+ct = prost_rezh(m_hex[:16])
+
+
 def imitostavka(ct):
-    m_byte = bytes.hex(m.encode())
+    m_byte = m_hex
     while len(m_byte) % 16 != 0:
         m_byte += '0'
     blocks = int((hex(ct[0][0])[2:].zfill(8) + hex(ct[0][1])[2:].zfill(8)), 16)
@@ -54,6 +63,8 @@ def imitostavka(ct):
         ct_block = pt ^ blocks
         prost = prost_rezh(hex(ct_block)[2:].zfill(16))
         blocks = int((hex(prost[0][0])[2:].zfill(8) + hex(prost[0][1])[2:].zfill(8)), 16)
-    imit = blocks & 0xFFFFFFFF
-    return imit
+    imit = blocks >> 32                  
+    return hex(imit)[2:].zfill(8)
+
+
 print(imitostavka(ct))
