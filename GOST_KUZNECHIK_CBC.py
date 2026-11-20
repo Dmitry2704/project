@@ -140,7 +140,7 @@ def CBC(iv, data):
         n_xor_P = X(bytes(i), R[:16])
         C = shifr(n_xor_P)
         f += C
-        R = R[16:]+C
+        R = C
     return f
 def de_CBC(iv, ct):
 
@@ -150,7 +150,7 @@ def de_CBC(iv, ct):
         pt = de_shifr(ct[i:i+16])
         n_xor_ct = X(pt, R[:16])
         f += n_xor_ct
-        R = R[16:]+ct[i:i+16]
+        R = ct[i:i+16]
     return f
 m = 'Kuznechik is a block cipher #002'.encode()
 ct = CBC(IV, pad(m))
