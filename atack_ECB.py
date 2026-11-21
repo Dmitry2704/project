@@ -1,42 +1,26 @@
 import requests
-import json
 
-URL = "https://aes.cryptohack.org/ecb_oracle/encrypt/&quot;"
+URL = "https://aes.cryptohack.org/ecb_oracle/encrypt/"
 
-def encrypt(plaintext_hex):
-    r = requests.get(f"{URL}{plaintext_hex}/")
-    return r.json()["ciphertext"]
+def encrypt(data: bytes) -> str:
+    return requests.get(f"{URL}{data.hex()}/").json()["ciphertext"]
 
+known = b""
 
-block1 = []
-block2 = []
+while not known.endswith(b"}"):
+    n = len(known)
 
-for i in range(16, 32):
-    pad = "00" * i
-    ciphertext = encrypt(pad)
-    block1.append(ciphertext[32:64])
-    block2.append(ciphertext[64:96])
+    pad_len = 15 - (n % 16)
+    block_no = n // 16
+    ct = encrypt(b"\x00" * pad_len)
+    target = ct[block_no * 32 : block_no * 32 + 32]
 
-samples = block1 + block2
-
-known = ""
-
-for i in range(1, 33):
-    if i <= 16:
-        target = samples[-16 - i]
-    else:
-        target = samples[16 - i]
-
+    prefix = (b"\x00" * 15 + known)[-15:]
     for guess in range(32, 127):
-        pad = "00" * (31 - len(known) // 2)
-        payload = pad + known + format(guess, "02x")
-        ciphertext = encrypt(payload)[32:64]
-
-        if ciphertext == target:
-            known += format(guess, "02x")
-            print(f"Found: {chr(guess)}  {bytes.fromhex(known).decode()}")
-
-            if chr(guess) == "}":
-                print(bytes.fromhex(known).decode())
-                exit()
+        probe = encrypt(prefix + bytes([guess]))[:32]
+        if probe == target:
+            known += bytes([guess])
+            print(known.decode())
             break
+
+print("FLAG:", known.decode())
