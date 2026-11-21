@@ -1,13 +1,12 @@
 import requests
 import json
 
-URL = "https://aes.cryptohack.org/ecb_oracle/encrypt/&quot;
+URL = "https://aes.cryptohack.org/ecb_oracle/encrypt/&quot;"
 
 def encrypt(plaintext_hex):
     r = requests.get(f"{URL}{plaintext_hex}/")
     return r.json()["ciphertext"]
 
-print("[*] Getting ciphertext samples...")
 
 block1 = []
 block2 = []
@@ -19,8 +18,6 @@ for i in range(16, 32):
     block2.append(ciphertext[64:96])
 
 samples = block1 + block2
-
-print("[*] Starting attack...")
 
 known = ""
 
@@ -37,9 +34,9 @@ for i in range(1, 33):
 
         if ciphertext == target:
             known += format(guess, "02x")
-            print(f"Found: {chr(guess)} -> {bytes.fromhex(known).decode()}")
+            print(f"Found: {chr(guess)}  {bytes.fromhex(known).decode()}")
 
             if chr(guess) == "}":
-                print(f"\n[+] FLAG: {bytes.fromhex(known).decode()}")
+                print(bytes.fromhex(known).decode())
                 exit()
             break
