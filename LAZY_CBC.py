@@ -34,7 +34,6 @@ url_flag = f'http://aes.cryptohack.org/lazy_cbc/get_flag/{KEY.hex()}'
 flag_resp = requests.get(url_flag).json()['plaintext']
 print(bytes.fromhex(flag_resp))
 
-@chal.route('/ecb_oracle/encrypt/<plaintext>/')
 def encrypt(plaintext):
     plaintext = bytes.fromhex(plaintext)
 
